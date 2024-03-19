@@ -1,6 +1,6 @@
 MODULE shr_orb_mod
 
-  use shr_kind_mod, only: SHR_KIND_R8, SHR_KIND_IN
+  use shr_kind_mod, only: SHR_KIND_R8, SHR_KIND_IN, SHR_KIND_R4
   use shr_sys_mod
   use shr_const_mod
   use shr_log_mod, only: s_loglev  => shr_log_Level
@@ -39,17 +39,52 @@ MODULE shr_orb_mod
   ! this is be set by calling set_constant_zenith_angle_deg()
   real   (SHR_KIND_R8) :: constant_zenith_angle_deg = -1  ! constant, uniform zneith angle [degrees]
 
+interface set_constant_zenith_angle_deg
+  module procedure set_constant_zenith_angle_deg_r4
+  module procedure set_constant_zenith_angle_deg_r8
+end interface
+interface shr_orb_azimuth
+  module procedure shr_orb_azimuth_r4
+  module procedure shr_orb_azimuth_r8
+end interface
+interface shr_orb_cosinc
+  module procedure shr_orb_cosinc_r4
+  module procedure shr_orb_cosinc_r8
+end interface
+interface shr_orb_cosz
+  module procedure shr_orb_cosz_r4
+  module procedure shr_orb_cosz_r8
+end interface
+interface shr_orb_avg_cosz
+  module procedure shr_orb_avg_cosz_r4
+  module procedure shr_orb_avg_cosz_r8
+end interface
+interface shr_orb_params
+  module procedure shr_orb_params_r4
+  module procedure shr_orb_params_r8
+end interface
+interface shr_orb_decl
+  module procedure shr_orb_decl_R4
+  module procedure shr_orb_decl_R8
+end interface
+  
   !===============================================================================
 CONTAINS
   !===============================================================================
 
-  SUBROUTINE set_constant_zenith_angle_deg(angle_deg)
+
+  subroutine set_constant_zenith_angle_deg_r4(angle_deg)
+    real(shr_kind_r4), intent(in) :: angle_deg
+    constant_zenith_angle_deg = real(angle_deg, SHR_KIND_R8)
+  end subroutine
+
+  SUBROUTINE set_constant_zenith_angle_deg_r8(angle_deg)
     real(SHR_KIND_R8),intent(in) :: angle_deg
     constant_zenith_angle_deg = angle_deg
-  END SUBROUTINE set_constant_zenith_angle_deg
+  END SUBROUTINE set_constant_zenith_angle_deg_r8
 
   !=======================================================================
-  real(SHR_KIND_R8) pure function shr_orb_azimuth(jday,lat,lon,declin,z)
+  real(SHR_KIND_R8) pure function shr_orb_azimuth_r8(jday,lat,lon,declin,z)
 
     !----------------------------------------------------------------------------
     !
@@ -72,20 +107,54 @@ CONTAINS
     ! constrain hour_angle to [-pi,pi] to determine east/west below
     if(hour_angle > pi) hour_angle = hour_angle - 2.0_SHR_KIND_R8*pi
 
-    shr_orb_azimuth = (sin(declin)*cos(lat) - cos(declin)*sin(lat)*cos(hour_angle))/ sin(z)
+    shr_orb_azimuth_r8 = (sin(declin)*cos(lat) - cos(declin)*sin(lat)*cos(hour_angle))/ sin(z)
     
-    shr_orb_azimuth = max(-1._SHR_KIND_R8, min(shr_orb_azimuth, 1._SHR_KIND_R8))
+    shr_orb_azimuth_r8 = max(-1._SHR_KIND_R8, min(shr_orb_azimuth_r8, 1._SHR_KIND_R8))
 
-    shr_orb_azimuth = acos(shr_orb_azimuth)
+    shr_orb_azimuth_r8 = acos(shr_orb_azimuth_r8)
 
     ! azimuth is east for times between midnight and noon (h < 0)
     ! azimuth is west for times between noon and midnight (h > 0)
-    if(hour_angle > 0.) shr_orb_azimuth = 2.0_SHR_KIND_R8*pi - shr_orb_azimuth
+    if(hour_angle > 0.) shr_orb_azimuth_r8 = 2.0_SHR_KIND_R8*pi - shr_orb_azimuth_r8
     
-  end function shr_orb_azimuth
+  end function shr_orb_azimuth_r8
+  real(SHR_KIND_R4) pure function shr_orb_azimuth_r4(jday,lat,lon,declin,z)
+
+    !----------------------------------------------------------------------------
+    !
+    ! function returns the solar azimuth angle.
+    ! azimuth angle is defined with respect to north, positive to east
+    ! based on Sproul, Renewable Energy, 2007
+    !
+    !----------------------------------------------------------------------------
+    real   (SHR_KIND_R4),intent(in) :: jday   ! Julian cal day (1.xx to 365.xx)
+    real   (SHR_KIND_R4),intent(in) :: lat    ! Centered latitude  (radians)
+    real   (SHR_KIND_R4),intent(in) :: lon    ! Centered longitude (radians)
+    real   (SHR_KIND_R4),intent(in) :: declin ! Solar declination  (radians)
+    real   (SHR_KIND_R4),intent(in) :: z      ! Solar zenith angle (radians)
+    
+    real(SHR_KIND_R4) :: hour_angle
+    !----------------------------------------------------------------------------
+   
+    hour_angle = 2.0_SHR_KIND_R4*pi*((jday-floor(jday)) - 0.5_SHR_KIND_R4) + lon
+
+    ! constrain hour_angle to [-pi,pi] to determine east/west below
+    if(hour_angle > pi) hour_angle = hour_angle - 2.0_SHR_KIND_R4*pi
+
+    shr_orb_azimuth_r4 = (sin(declin)*cos(lat) - cos(declin)*sin(lat)*cos(hour_angle))/ sin(z)
+    
+    shr_orb_azimuth_r4 = max(-1._SHR_KIND_R4, min(shr_orb_azimuth_r4, 1._SHR_KIND_R4))
+
+    shr_orb_azimuth_r4 = acos(shr_orb_azimuth_r4)
+
+    ! azimuth is east for times between midnight and noon (h < 0)
+    ! azimuth is west for times between noon and midnight (h > 0)
+    if(hour_angle > 0.) shr_orb_azimuth_r4 = 2.0_SHR_KIND_R4*pi - shr_orb_azimuth_r4
+    
+  end function shr_orb_azimuth_r4
   
   !=======================================================================
-  real(SHR_KIND_R8) pure function shr_orb_cosinc(z,azimuth,beta,aspect)
+  real(SHR_KIND_R8) pure function shr_orb_cosinc_r8(z,azimuth,beta,aspect)
     
     !----------------------------------------------------------------------------
     !
@@ -99,15 +168,34 @@ CONTAINS
     
     !----------------------------------------------------------------------------
     
-    shr_orb_cosinc = sin(beta)*sin(z)*cos(aspect - azimuth) + cos(beta)*cos(z)
+    shr_orb_cosinc_r8 = sin(beta)*sin(z)*cos(aspect - azimuth) + cos(beta)*cos(z)
     
-    shr_orb_cosinc = max(-1._SHR_KIND_R8, min(shr_orb_cosinc, 1._SHR_KIND_R8))
+    shr_orb_cosinc_r8 = max(-1._SHR_KIND_R8, min(shr_orb_cosinc_r8, 1._SHR_KIND_R8))
     
-  end function shr_orb_cosinc
+  end function shr_orb_cosinc_r8
+real(SHR_KIND_R4) pure function shr_orb_cosinc_r4(z,azimuth,beta,aspect)
+    
+    !----------------------------------------------------------------------------
+    !
+    ! Returns incidence angle to local surface
+    !
+    !----------------------------------------------------------------------------
+    real   (SHR_KIND_R4),intent(in) :: z            ! Solar zenith angle (radians)
+    real   (SHR_KIND_R4),intent(in) :: azimuth      ! Solar azimuth angle (radians)
+    real   (SHR_KIND_R4),intent(in) :: beta         ! Surface slope angle (radians)
+    real   (SHR_KIND_R4),intent(in) :: aspect       ! Surface azimuth angle (radians)
+    
+    !----------------------------------------------------------------------------
+    
+    shr_orb_cosinc_r4 = sin(beta)*sin(z)*cos(aspect - azimuth) + cos(beta)*cos(z)
+    
+    shr_orb_cosinc_r4 = max(-1._SHR_KIND_R4, min(shr_orb_cosinc_r4, 1._SHR_KIND_R4))
+    
+  end function shr_orb_cosinc_r4
 
   !=======================================================================
 
-  real(SHR_KIND_R8) pure FUNCTION shr_orb_cosz(jday,lat,lon,declin,dt_avg,uniform_angle)
+  real(SHR_KIND_R8) pure FUNCTION shr_orb_cosz_r8(jday,lat,lon,declin,dt_avg,uniform_angle)
 
     !----------------------------------------------------------------------------
     !
@@ -134,12 +222,12 @@ CONTAINS
     !----------------------------------------------------------------------------
 
     if ( constant_zenith_angle_deg >= 0 ) then
-      shr_orb_cosz = cos( constant_zenith_angle_deg * SHR_CONST_PI/180. )
+      shr_orb_cosz_r8 = cos( constant_zenith_angle_deg * SHR_CONST_PI/180. )
       return
     end if
 
     if (present(uniform_angle)) then
-      shr_orb_cosz = cos(uniform_angle)
+      shr_orb_cosz_r8 = cos(uniform_angle)
       return
     end if
 
@@ -150,13 +238,64 @@ CONTAINS
     end if
     ! If dt for the average cosz is specified, then call the shr_orb_avg_cosz
     if (use_dt_avg) then
-      shr_orb_cosz = shr_orb_avg_cosz(jday, lat, lon, declin, dt_avg)
+      shr_orb_cosz_r8 = shr_orb_avg_cosz(jday, lat, lon, declin, dt_avg)
     else
-      shr_orb_cosz = sin(lat)*sin(declin) - cos(lat)*cos(declin) * &
+      shr_orb_cosz_r8 = sin(lat)*sin(declin) - cos(lat)*cos(declin) * &
                      cos((jday-floor(jday))*2.0_SHR_KIND_R8*pi + lon)
     end if
 
-  END FUNCTION shr_orb_cosz
+  END FUNCTION shr_orb_cosz_r8
+
+real(SHR_KIND_R4) pure FUNCTION shr_orb_cosz_r4(jday,lat,lon,declin,dt_avg,uniform_angle)
+
+    !----------------------------------------------------------------------------
+    !
+    ! FUNCTION to return the cosine of the solar zenith angle.
+    ! Assumes 365.0 days/year.
+    !
+    !--------------- Code History -----------------------------------------------
+    !
+    ! Original Author: Brian Kauffman
+    ! Date:            Jan/98
+    ! History:         adapted from statement FUNCTION in share/orb_cosz.h
+    !
+    !----------------------------------------------------------------------------
+
+    real   (shr_kind_R4),intent(in) :: jday   ! Julian cal day (1.xx to 365.xx)
+    real   (shr_kind_r4),intent(in) :: lat    ! Centered latitude (radians)
+    real   (shr_kind_r4),intent(in) :: lon    ! Centered longitude (radians)
+    real   (shr_kind_r4),intent(in) :: declin ! Solar declination (radians)
+    real   (shr_kind_r4),intent(in), optional   :: dt_avg ! if present and set non-zero, then use in the
+    real   (shr_kind_r4),intent(in), optional   :: uniform_angle ! if present and true, apply uniform insolation 
+    ! average cosz calculation
+    logical :: use_dt_avg
+
+    !----------------------------------------------------------------------------
+
+    if ( constant_zenith_angle_deg >= 0 ) then
+      shr_orb_cosz_r4 = cos( constant_zenith_angle_deg * SHR_CONST_PI/180. )
+      return
+    end if
+
+    if (present(uniform_angle)) then
+      shr_orb_cosz_r4 = cos(uniform_angle)
+      return
+    end if
+
+    ! perform the calculation of shr_orb_cosz
+    use_dt_avg = .false.
+    if (present(dt_avg)) then
+      if (dt_avg /= 0.0_shr_kind_r4) use_dt_avg = .true.
+    end if
+    ! If dt for the average cosz is specified, then call the shr_orb_avg_cosz
+    if (use_dt_avg) then
+      shr_orb_cosz_r4 = shr_orb_avg_cosz(jday, lat, lon, declin, dt_avg)
+    else
+      shr_orb_cosz_r4 = sin(lat)*sin(declin) - cos(lat)*cos(declin) * &
+                     cos((jday-floor(jday))*2.0_SHR_KIND_R8*pi + lon)
+    end if
+
+  END FUNCTION shr_orb_cosz_r4
 
   !=======================================================================
   ! A New Algorithm for Calculation of Cosine Solar Zenith Angle
@@ -166,7 +305,7 @@ CONTAINS
   ! Ref.  : Zhou et al., GRL, 2015
   !=======================================================================
 
-  real (SHR_KIND_R8) pure function shr_orb_avg_cosz(jday, lat, lon, declin, dt_avg)
+  real (SHR_KIND_R8) pure function shr_orb_avg_cosz_r8(jday, lat, lon, declin, dt_avg)
 
     use shr_const_mod, only : pi => shr_const_pi
 
@@ -282,17 +421,174 @@ CONTAINS
     ! perform a time integration to obtain cosz if desired
     ! output is valid over the period from t to t + dt
     if (tt2 > tt1 .or. tt4 > tt3) then
-       shr_orb_avg_cosz = (aa * (tt2 - tt1) + bb * (sin(tt2) - sin(tt1))) / dt + &
+       shr_orb_avg_cosz_r8 = (aa * (tt2 - tt1) + bb * (sin(tt2) - sin(tt1))) / dt + &
             (aa * (tt4 - tt3) + bb * (sin(tt4) - sin(tt3))) / dt
     else
-       shr_orb_avg_cosz = 0.0_SHR_KIND_R8
+       shr_orb_avg_cosz_r8 = 0.0_SHR_KIND_R8
     end if
 
-  end function shr_orb_avg_cosz
+  end function shr_orb_avg_cosz_r8
+
+  real (SHR_KIND_R4) pure function shr_orb_avg_cosz_r4(jday, lat, lon, declin, dt_avg)
+
+    use shr_const_mod, only : pi => shr_const_pi
+
+    implicit none
+
+    !-----------------------------------------------------------------------
+    ! In/Out Arguements
+
+    real(SHR_KIND_R4), intent(in) :: jday   ! Julian calendar day (1.xx to 365.xx)
+    real(SHR_KIND_R4), intent(in) :: lat    ! latitude (radian)
+    real(SHR_KIND_R4), intent(in) :: lon    ! longitude (radian)
+    real(SHR_KIND_R4), intent(in) :: declin ! solar declination (radian)
+    real(SHR_KIND_R4), intent(in) :: dt_avg ! dt for averaged cosz calculation
+
+    !-----------------------------------------------------------------------
+    ! Local Arguments
+
+    real(SHR_KIND_R4),parameter :: piover2 = pi/2.0_SHR_KIND_R4
+    real(SHR_KIND_R4),parameter :: twopi   = pi*2.0_SHR_KIND_R4
+
+    real(SHR_KIND_R4) :: aa, bb
+    real(SHR_KIND_R4) :: del, phi
+    real(SHR_KIND_R4) :: cos_h, h
+    real(SHR_KIND_R4) :: t1, t2, dt
+    real(SHR_KIND_R4) :: tt1, tt2, tt3, tt4
+
+    !-----------------------------------------------------------------------
+    ! Compute Half-day Length
+
+    ! adjust latitude so that its tangent will be defined
+    if (lat ==  piover2) then
+       del = lat - 1.0e-05_SHR_KIND_R4
+    else if (lat ==  -piover2) then
+       del = lat + 1.0e-05_SHR_KIND_R4
+    else
+       del = lat
+    end if
+
+    ! adjust declination so that its tangent will be defined
+    if (declin == piover2) then
+       phi = declin - 1.0e-05_SHR_KIND_R4
+    else if (declin == -piover2) then
+       phi = declin + 1.0e-05_SHR_KIND_R4
+    else
+       phi = declin
+    end if
+
+    ! define the cosine of the half-day length
+    ! adjust for cases of all daylight or all night
+    cos_h = - tan(del) * tan(phi)
+    if (cos_h <= -1.0_SHR_KIND_R4) then
+       h = pi
+    else if (cos_h >= 1.0_SHR_KIND_R4) then
+       h = 0.0_SHR_KIND_R4
+    else
+       h = acos(cos_h)
+    end if
+
+    !-----------------------------------------------------------------------
+    ! Define Local Time t and t + dt
+
+    ! adjust t to be between -pi and pi
+    t1 = (jday - int(jday)) * twopi + lon - pi
+
+    if (t1 >=  pi) then
+       t1 = t1 - twopi
+    else if (t1 < -pi) then
+       t1 = t1 + twopi
+    end if
+
+    dt = dt_avg / 86400.0_SHR_KIND_R4 * twopi
+    t2 = t1 + dt
+
+    !-----------------------------------------------------------------------
+    ! Compute Cosine Solar Zenith angle
+
+    ! define terms needed in the cosine zenith angle equation
+    aa = sin(lat) * sin(declin)
+    bb = cos(lat) * cos(declin)
+
+    ! define the hour angle
+    ! force it to be between -h and h
+    ! consider the situation when the night period is too short
+    if (t2 >= pi .and. t1 <= pi .and. pi - h <= dt) then
+       tt2 = h
+       tt1 = min(max(t1, -h)       ,         h)
+       tt4 = min(max(t2, twopi - h), twopi + h)
+       tt3 = twopi - h
+    else if (t2 >= -pi .and. t1 <= -pi .and. pi - h <= dt) then
+       tt2 = - twopi + h
+       tt1 = min(max(t1, -twopi - h), -twopi + h)
+       tt4 = min(max(t2, -h)        ,          h)
+       tt3 = -h
+    else
+       if (t2 > pi) then
+          tt2 = min(max(t2 - twopi, -h), h)
+       else if (t2 < - pi) then
+          tt2 = min(max(t2 + twopi, -h), h)
+       else
+          tt2 = min(max(t2 ,        -h), h)
+       end if
+       if (t1 > pi) then
+          tt1 = min(max(t1 - twopi, -h), h)
+       else if (t1 < - pi) then
+          tt1 = min(max(t1 + twopi, -h), h)
+       else
+          tt1 = min(max(t1        , -h), h)
+       end if
+       tt4 = 0.0_SHR_KIND_R4
+       tt3 = 0.0_SHR_KIND_R4
+    end if
+
+    ! perform a time integration to obtain cosz if desired
+    ! output is valid over the period from t to t + dt
+    if (tt2 > tt1 .or. tt4 > tt3) then
+       shr_orb_avg_cosz_r4 = (aa * (tt2 - tt1) + bb * (sin(tt2) - sin(tt1))) / dt + &
+            (aa * (tt4 - tt3) + bb * (sin(tt4) - sin(tt3))) / dt
+    else
+       shr_orb_avg_cosz_r4 = 0.0_SHR_KIND_R4
+    end if
+
+  end function shr_orb_avg_cosz_r4
 
   !===============================================================================
+  subroutine shr_orb_params_r8( iyear_AD , eccen  , obliq , mvelp     ,     &
+       &               obliqr   , lambm0 , mvelpp, log_print )
+    !----------------------------- Arguments ------------------------------------
+    integer(SHR_KIND_IN),intent(in)    :: iyear_AD  ! Year to calculate orbit for
+    real   (SHR_KIND_R8),intent(inout) :: eccen     ! orbital eccentricity
+    real   (SHR_KIND_R8),intent(inout) :: obliq     ! obliquity in degrees
+    real   (SHR_KIND_R8),intent(inout) :: mvelp     ! moving vernal equinox long
+    real   (SHR_KIND_R8),intent(out)   :: obliqr    ! Earths obliquity in rad
+    real   (SHR_KIND_R8),intent(out)   :: lambm0    ! Mean long of perihelion at
+    ! vernal equinox (radians)
+    real   (SHR_KIND_R8),intent(out)   :: mvelpp    ! moving vernal equinox long
+    ! of perihelion plus pi (rad)
+    logical             ,intent(in)    :: log_print ! Flags print of status/error
 
-  SUBROUTINE shr_orb_params( iyear_AD , eccen  , obliq , mvelp     ,     &
+   real(shr_kind_r4) :: eccen_r4, obliq_r4, mvelp_r4, obliqr_r4, lambm0_r4, mvelpp_r4
+
+   eccen_r4 = real(eccen, shr_kind_r4)
+   obliq_r4 = real(obliq, shr_kind_r4)
+   mvelp_r4 = real(mvelp, shr_kind_r4)
+   obliqr_r4 = real(obliqr, shr_kind_r4)
+   lambm0_r4 = real(lambm0, shr_kind_r4)
+   mvelpp_r4 = real(mvelpp, shr_kind_r4)
+
+   call shr_orb_params_r4(iyear_ad, eccen_r4, obliq_r4, mvelp_r4, obliqr_r4, lambm0_r4, mvelpp_r4, log_print)
+   eccen = real(eccen, shr_kind_r8)
+   obliq = real(obliq, shr_kind_r8)
+   mvelp = real(mvelp, shr_kind_r8)
+   obliqr = real(obliqr, shr_kind_r8)
+   lambm0 = real(lambm0, shr_kind_r8)
+   mvelpp = real(mvelpp, shr_kind_r8)
+
+end subroutine shr_orb_params_r8
+
+
+  SUBROUTINE shr_orb_params_r4( iyear_AD , eccen  , obliq , mvelp     ,     &
        &               obliqr   , lambm0 , mvelpp, log_print )
 
     !-------------------------------------------------------------------------------
@@ -311,13 +607,13 @@ CONTAINS
 
     !----------------------------- Arguments ------------------------------------
     integer(SHR_KIND_IN),intent(in)    :: iyear_AD  ! Year to calculate orbit for
-    real   (SHR_KIND_R8),intent(inout) :: eccen     ! orbital eccentricity
-    real   (SHR_KIND_R8),intent(inout) :: obliq     ! obliquity in degrees
-    real   (SHR_KIND_R8),intent(inout) :: mvelp     ! moving vernal equinox long
-    real   (SHR_KIND_R8),intent(out)   :: obliqr    ! Earths obliquity in rad
-    real   (SHR_KIND_R8),intent(out)   :: lambm0    ! Mean long of perihelion at
+    real   (SHR_KIND_R4),intent(inout) :: eccen     ! orbital eccentricity
+    real   (SHR_KIND_R4),intent(inout) :: obliq     ! obliquity in degrees
+    real   (SHR_KIND_R4),intent(inout) :: mvelp     ! moving vernal equinox long
+    real   (SHR_KIND_R4),intent(out)   :: obliqr    ! Earths obliquity in rad
+    real   (SHR_KIND_R4),intent(out)   :: lambm0    ! Mean long of perihelion at
     ! vernal equinox (radians)
-    real   (SHR_KIND_R8),intent(out)   :: mvelpp    ! moving vernal equinox long
+    real   (SHR_KIND_R4),intent(out)   :: mvelpp    ! moving vernal equinox long
     ! of perihelion plus pi (rad)
     logical             ,intent(in)    :: log_print ! Flags print of status/error
 
@@ -325,199 +621,199 @@ CONTAINS
     integer(SHR_KIND_IN),parameter :: poblen =47 ! # of elements in series wrt obliquity
     integer(SHR_KIND_IN),parameter :: pecclen=19 ! # of elements in series wrt eccentricity
     integer(SHR_KIND_IN),parameter :: pmvelen=78 ! # of elements in series wrt vernal equinox
-    real   (SHR_KIND_R8),parameter :: psecdeg = 1.0_SHR_KIND_R8/3600.0_SHR_KIND_R8 ! arc sec to deg conversion
+    real   (SHR_KIND_R4),parameter :: psecdeg = 1.0_SHR_KIND_R4/3600.0_SHR_KIND_R4 ! arc sec to deg conversion
 
-    real   (SHR_KIND_R8) :: degrad = pi/180._SHR_KIND_R8   ! degree to radian conversion factor
-    real   (SHR_KIND_R8) :: yb4_1950AD         ! number of years before 1950 AD
+    real   (SHR_KIND_R4) :: degrad = pi/180._SHR_KIND_R4   ! degree to radian conversion factor
+    real   (SHR_KIND_R4) :: yb4_1950AD         ! number of years before 1950 AD
 
     character(len=*),parameter :: subname = '(shr_orb_params)'
 
     ! Cosine series data for computation of obliquity: amplitude (arc seconds),
     ! rate (arc seconds/year), phase (degrees).
 
-    real   (SHR_KIND_R8), parameter :: obamp(poblen) =  & ! amplitudes for obliquity cos series
-         &      (/   -2462.2214466_SHR_KIND_R8, -857.3232075_SHR_KIND_R8, -629.3231835_SHR_KIND_R8,   &
-         &            -414.2804924_SHR_KIND_R8, -311.7632587_SHR_KIND_R8,  308.9408604_SHR_KIND_R8,   &
-         &            -162.5533601_SHR_KIND_R8, -116.1077911_SHR_KIND_R8,  101.1189923_SHR_KIND_R8,   &
-         &             -67.6856209_SHR_KIND_R8,   24.9079067_SHR_KIND_R8,   22.5811241_SHR_KIND_R8,   &
-         &             -21.1648355_SHR_KIND_R8,  -15.6549876_SHR_KIND_R8,   15.3936813_SHR_KIND_R8,   &
-         &              14.6660938_SHR_KIND_R8,  -11.7273029_SHR_KIND_R8,   10.2742696_SHR_KIND_R8,   &
-         &               6.4914588_SHR_KIND_R8,    5.8539148_SHR_KIND_R8,   -5.4872205_SHR_KIND_R8,   &
-         &              -5.4290191_SHR_KIND_R8,    5.1609570_SHR_KIND_R8,    5.0786314_SHR_KIND_R8,   &
-         &              -4.0735782_SHR_KIND_R8,    3.7227167_SHR_KIND_R8,    3.3971932_SHR_KIND_R8,   &
-         &              -2.8347004_SHR_KIND_R8,   -2.6550721_SHR_KIND_R8,   -2.5717867_SHR_KIND_R8,   &
-         &              -2.4712188_SHR_KIND_R8,    2.4625410_SHR_KIND_R8,    2.2464112_SHR_KIND_R8,   &
-         &              -2.0755511_SHR_KIND_R8,   -1.9713669_SHR_KIND_R8,   -1.8813061_SHR_KIND_R8,   &
-         &              -1.8468785_SHR_KIND_R8,    1.8186742_SHR_KIND_R8,    1.7601888_SHR_KIND_R8,   &
-         &              -1.5428851_SHR_KIND_R8,    1.4738838_SHR_KIND_R8,   -1.4593669_SHR_KIND_R8,   &
-         &               1.4192259_SHR_KIND_R8,   -1.1818980_SHR_KIND_R8,    1.1756474_SHR_KIND_R8,   &
-         &              -1.1316126_SHR_KIND_R8,    1.0896928_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: obamp(poblen) =  & ! amplitudes for obliquity cos series
+         &      (/   -2462.2214466_SHR_KIND_R4, -857.3232075_SHR_KIND_R4, -629.3231835_SHR_KIND_R4,   &
+         &            -414.2804924_SHR_KIND_R4, -311.7632587_SHR_KIND_R4,  308.9408604_SHR_KIND_R4,   &
+         &            -162.5533601_SHR_KIND_R4, -116.1077911_SHR_KIND_R4,  101.1189923_SHR_KIND_R4,   &
+         &             -67.6856209_SHR_KIND_R4,   24.9079067_SHR_KIND_R4,   22.5811241_SHR_KIND_R4,   &
+         &             -21.1648355_SHR_KIND_R4,  -15.6549876_SHR_KIND_R4,   15.3936813_SHR_KIND_R4,   &
+         &              14.6660938_SHR_KIND_R4,  -11.7273029_SHR_KIND_R4,   10.2742696_SHR_KIND_R4,   &
+         &               6.4914588_SHR_KIND_R4,    5.8539148_SHR_KIND_R4,   -5.4872205_SHR_KIND_R4,   &
+         &              -5.4290191_SHR_KIND_R4,    5.1609570_SHR_KIND_R4,    5.0786314_SHR_KIND_R4,   &
+         &              -4.0735782_SHR_KIND_R4,    3.7227167_SHR_KIND_R4,    3.3971932_SHR_KIND_R4,   &
+         &              -2.8347004_SHR_KIND_R4,   -2.6550721_SHR_KIND_R4,   -2.5717867_SHR_KIND_R4,   &
+         &              -2.4712188_SHR_KIND_R4,    2.4625410_SHR_KIND_R4,    2.2464112_SHR_KIND_R4,   &
+         &              -2.0755511_SHR_KIND_R4,   -1.9713669_SHR_KIND_R4,   -1.8813061_SHR_KIND_R4,   &
+         &              -1.8468785_SHR_KIND_R4,    1.8186742_SHR_KIND_R4,    1.7601888_SHR_KIND_R4,   &
+         &              -1.5428851_SHR_KIND_R4,    1.4738838_SHR_KIND_R4,   -1.4593669_SHR_KIND_R4,   &
+         &               1.4192259_SHR_KIND_R4,   -1.1818980_SHR_KIND_R4,    1.1756474_SHR_KIND_R4,   &
+         &              -1.1316126_SHR_KIND_R4,    1.0896928_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: obrate(poblen) = & ! rates for obliquity cosine series
-         &        (/  31.609974_SHR_KIND_R8, 32.620504_SHR_KIND_R8, 24.172203_SHR_KIND_R8,   &
-         &            31.983787_SHR_KIND_R8, 44.828336_SHR_KIND_R8, 30.973257_SHR_KIND_R8,   &
-         &            43.668246_SHR_KIND_R8, 32.246691_SHR_KIND_R8, 30.599444_SHR_KIND_R8,   &
-         &            42.681324_SHR_KIND_R8, 43.836462_SHR_KIND_R8, 47.439436_SHR_KIND_R8,   &
-         &            63.219948_SHR_KIND_R8, 64.230478_SHR_KIND_R8,  1.010530_SHR_KIND_R8,   &
-         &             7.437771_SHR_KIND_R8, 55.782177_SHR_KIND_R8,  0.373813_SHR_KIND_R8,   &
-         &            13.218362_SHR_KIND_R8, 62.583231_SHR_KIND_R8, 63.593761_SHR_KIND_R8,   &
-         &            76.438310_SHR_KIND_R8, 45.815258_SHR_KIND_R8,  8.448301_SHR_KIND_R8,   &
-         &            56.792707_SHR_KIND_R8, 49.747842_SHR_KIND_R8, 12.058272_SHR_KIND_R8,   &
-         &            75.278220_SHR_KIND_R8, 65.241008_SHR_KIND_R8, 64.604291_SHR_KIND_R8,   &
-         &             1.647247_SHR_KIND_R8,  7.811584_SHR_KIND_R8, 12.207832_SHR_KIND_R8,   &
-         &            63.856665_SHR_KIND_R8, 56.155990_SHR_KIND_R8, 77.448840_SHR_KIND_R8,   &
-         &             6.801054_SHR_KIND_R8, 62.209418_SHR_KIND_R8, 20.656133_SHR_KIND_R8,   &
-         &            48.344406_SHR_KIND_R8, 55.145460_SHR_KIND_R8, 69.000539_SHR_KIND_R8,   &
-         &            11.071350_SHR_KIND_R8, 74.291298_SHR_KIND_R8, 11.047742_SHR_KIND_R8,   &
-         &             0.636717_SHR_KIND_R8, 12.844549_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: obrate(poblen) = & ! rates for obliquity cosine series
+         &        (/  31.609974_SHR_KIND_R4, 32.620504_SHR_KIND_R4, 24.172203_SHR_KIND_R4,   &
+         &            31.983787_SHR_KIND_R4, 44.828336_SHR_KIND_R4, 30.973257_SHR_KIND_R4,   &
+         &            43.668246_SHR_KIND_R4, 32.246691_SHR_KIND_R4, 30.599444_SHR_KIND_R4,   &
+         &            42.681324_SHR_KIND_R4, 43.836462_SHR_KIND_R4, 47.439436_SHR_KIND_R4,   &
+         &            63.219948_SHR_KIND_R4, 64.230478_SHR_KIND_R4,  1.010530_SHR_KIND_R4,   &
+         &             7.437771_SHR_KIND_R4, 55.782177_SHR_KIND_R4,  0.373813_SHR_KIND_R4,   &
+         &            13.218362_SHR_KIND_R4, 62.583231_SHR_KIND_R4, 63.593761_SHR_KIND_R4,   &
+         &            76.438310_SHR_KIND_R4, 45.815258_SHR_KIND_R4,  8.448301_SHR_KIND_R4,   &
+         &            56.792707_SHR_KIND_R4, 49.747842_SHR_KIND_R4, 12.058272_SHR_KIND_R4,   &
+         &            75.278220_SHR_KIND_R4, 65.241008_SHR_KIND_R4, 64.604291_SHR_KIND_R4,   &
+         &             1.647247_SHR_KIND_R4,  7.811584_SHR_KIND_R4, 12.207832_SHR_KIND_R4,   &
+         &            63.856665_SHR_KIND_R4, 56.155990_SHR_KIND_R4, 77.448840_SHR_KIND_R4,   &
+         &             6.801054_SHR_KIND_R4, 62.209418_SHR_KIND_R4, 20.656133_SHR_KIND_R4,   &
+         &            48.344406_SHR_KIND_R4, 55.145460_SHR_KIND_R4, 69.000539_SHR_KIND_R4,   &
+         &            11.071350_SHR_KIND_R4, 74.291298_SHR_KIND_R4, 11.047742_SHR_KIND_R4,   &
+         &             0.636717_SHR_KIND_R4, 12.844549_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: obphas(poblen) = & ! phases for obliquity cosine series
-         &      (/    251.9025_SHR_KIND_R8, 280.8325_SHR_KIND_R8, 128.3057_SHR_KIND_R8,   &
-         &            292.7252_SHR_KIND_R8,  15.3747_SHR_KIND_R8, 263.7951_SHR_KIND_R8,   &
-         &            308.4258_SHR_KIND_R8, 240.0099_SHR_KIND_R8, 222.9725_SHR_KIND_R8,   &
-         &            268.7809_SHR_KIND_R8, 316.7998_SHR_KIND_R8, 319.6024_SHR_KIND_R8,   &
-         &            143.8050_SHR_KIND_R8, 172.7351_SHR_KIND_R8,  28.9300_SHR_KIND_R8,   &
-         &            123.5968_SHR_KIND_R8,  20.2082_SHR_KIND_R8,  40.8226_SHR_KIND_R8,   &
-         &            123.4722_SHR_KIND_R8, 155.6977_SHR_KIND_R8, 184.6277_SHR_KIND_R8,   &
-         &            267.2772_SHR_KIND_R8,  55.0196_SHR_KIND_R8, 152.5268_SHR_KIND_R8,   &
-         &             49.1382_SHR_KIND_R8, 204.6609_SHR_KIND_R8,  56.5233_SHR_KIND_R8,   &
-         &            200.3284_SHR_KIND_R8, 201.6651_SHR_KIND_R8, 213.5577_SHR_KIND_R8,   &
-         &             17.0374_SHR_KIND_R8, 164.4194_SHR_KIND_R8,  94.5422_SHR_KIND_R8,   &
-         &            131.9124_SHR_KIND_R8,  61.0309_SHR_KIND_R8, 296.2073_SHR_KIND_R8,   &
-         &            135.4894_SHR_KIND_R8, 114.8750_SHR_KIND_R8, 247.0691_SHR_KIND_R8,   &
-         &            256.6114_SHR_KIND_R8,  32.1008_SHR_KIND_R8, 143.6804_SHR_KIND_R8,   &
-         &             16.8784_SHR_KIND_R8, 160.6835_SHR_KIND_R8,  27.5932_SHR_KIND_R8,   &
-         &            348.1074_SHR_KIND_R8,  82.6496_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: obphas(poblen) = & ! phases for obliquity cosine series
+         &      (/    251.9025_SHR_KIND_R4, 280.8325_SHR_KIND_R4, 128.3057_SHR_KIND_R4,   &
+         &            292.7252_SHR_KIND_R4,  15.3747_SHR_KIND_R4, 263.7951_SHR_KIND_R4,   &
+         &            308.4258_SHR_KIND_R4, 240.0099_SHR_KIND_R4, 222.9725_SHR_KIND_R4,   &
+         &            268.7809_SHR_KIND_R4, 316.7998_SHR_KIND_R4, 319.6024_SHR_KIND_R4,   &
+         &            143.8050_SHR_KIND_R4, 172.7351_SHR_KIND_R4,  28.9300_SHR_KIND_R4,   &
+         &            123.5968_SHR_KIND_R4,  20.2082_SHR_KIND_R4,  40.8226_SHR_KIND_R4,   &
+         &            123.4722_SHR_KIND_R4, 155.6977_SHR_KIND_R4, 184.6277_SHR_KIND_R4,   &
+         &            267.2772_SHR_KIND_R4,  55.0196_SHR_KIND_R4, 152.5268_SHR_KIND_R4,   &
+         &             49.1382_SHR_KIND_R4, 204.6609_SHR_KIND_R4,  56.5233_SHR_KIND_R4,   &
+         &            200.3284_SHR_KIND_R4, 201.6651_SHR_KIND_R4, 213.5577_SHR_KIND_R4,   &
+         &             17.0374_SHR_KIND_R4, 164.4194_SHR_KIND_R4,  94.5422_SHR_KIND_R4,   &
+         &            131.9124_SHR_KIND_R4,  61.0309_SHR_KIND_R4, 296.2073_SHR_KIND_R4,   &
+         &            135.4894_SHR_KIND_R4, 114.8750_SHR_KIND_R4, 247.0691_SHR_KIND_R4,   &
+         &            256.6114_SHR_KIND_R4,  32.1008_SHR_KIND_R4, 143.6804_SHR_KIND_R4,   &
+         &             16.8784_SHR_KIND_R4, 160.6835_SHR_KIND_R4,  27.5932_SHR_KIND_R4,   &
+         &            348.1074_SHR_KIND_R4,  82.6496_SHR_KIND_R4/)
 
     ! Cosine/sine series data for computation of eccentricity and fixed vernal
     ! equinox longitude of perihelion (fvelp): amplitude,
     ! rate (arc seconds/year), phase (degrees).
 
-    real   (SHR_KIND_R8), parameter :: ecamp (pecclen) = & ! ampl for eccen/fvelp cos/sin series
-         &      (/   0.01860798_SHR_KIND_R8,  0.01627522_SHR_KIND_R8, -0.01300660_SHR_KIND_R8,   &
-         &           0.00988829_SHR_KIND_R8, -0.00336700_SHR_KIND_R8,  0.00333077_SHR_KIND_R8,   &
-         &          -0.00235400_SHR_KIND_R8,  0.00140015_SHR_KIND_R8,  0.00100700_SHR_KIND_R8,   &
-         &           0.00085700_SHR_KIND_R8,  0.00064990_SHR_KIND_R8,  0.00059900_SHR_KIND_R8,   &
-         &           0.00037800_SHR_KIND_R8, -0.00033700_SHR_KIND_R8,  0.00027600_SHR_KIND_R8,   &
-         &           0.00018200_SHR_KIND_R8, -0.00017400_SHR_KIND_R8, -0.00012400_SHR_KIND_R8,   &
-         &           0.00001250_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: ecamp (pecclen) = & ! ampl for eccen/fvelp cos/sin series
+         &      (/   0.01860798_SHR_KIND_R4,  0.01627522_SHR_KIND_R4, -0.01300660_SHR_KIND_R4,   &
+         &           0.00988829_SHR_KIND_R4, -0.00336700_SHR_KIND_R4,  0.00333077_SHR_KIND_R4,   &
+         &          -0.00235400_SHR_KIND_R4,  0.00140015_SHR_KIND_R4,  0.00100700_SHR_KIND_R4,   &
+         &           0.00085700_SHR_KIND_R4,  0.00064990_SHR_KIND_R4,  0.00059900_SHR_KIND_R4,   &
+         &           0.00037800_SHR_KIND_R4, -0.00033700_SHR_KIND_R4,  0.00027600_SHR_KIND_R4,   &
+         &           0.00018200_SHR_KIND_R4, -0.00017400_SHR_KIND_R4, -0.00012400_SHR_KIND_R4,   &
+         &           0.00001250_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: ecrate(pecclen) = & ! rates for eccen/fvelp cos/sin series
-         &      (/    4.2072050_SHR_KIND_R8,  7.3460910_SHR_KIND_R8, 17.8572630_SHR_KIND_R8,  &
-         &           17.2205460_SHR_KIND_R8, 16.8467330_SHR_KIND_R8,  5.1990790_SHR_KIND_R8,  &
-         &           18.2310760_SHR_KIND_R8, 26.2167580_SHR_KIND_R8,  6.3591690_SHR_KIND_R8,  &
-         &           16.2100160_SHR_KIND_R8,  3.0651810_SHR_KIND_R8, 16.5838290_SHR_KIND_R8,  &
-         &           18.4939800_SHR_KIND_R8,  6.1909530_SHR_KIND_R8, 18.8677930_SHR_KIND_R8,  &
-         &           17.4255670_SHR_KIND_R8,  6.1860010_SHR_KIND_R8, 18.4174410_SHR_KIND_R8,  &
-         &            0.6678630_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: ecrate(pecclen) = & ! rates for eccen/fvelp cos/sin series
+         &      (/    4.2072050_SHR_KIND_R4,  7.3460910_SHR_KIND_R4, 17.8572630_SHR_KIND_R4,  &
+         &           17.2205460_SHR_KIND_R4, 16.8467330_SHR_KIND_R4,  5.1990790_SHR_KIND_R4,  &
+         &           18.2310760_SHR_KIND_R4, 26.2167580_SHR_KIND_R4,  6.3591690_SHR_KIND_R4,  &
+         &           16.2100160_SHR_KIND_R4,  3.0651810_SHR_KIND_R4, 16.5838290_SHR_KIND_R4,  &
+         &           18.4939800_SHR_KIND_R4,  6.1909530_SHR_KIND_R4, 18.8677930_SHR_KIND_R4,  &
+         &           17.4255670_SHR_KIND_R4,  6.1860010_SHR_KIND_R4, 18.4174410_SHR_KIND_R4,  &
+         &            0.6678630_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: ecphas(pecclen) = & ! phases for eccen/fvelp cos/sin series
-         &      (/    28.620089_SHR_KIND_R8, 193.788772_SHR_KIND_R8, 308.307024_SHR_KIND_R8,  &
-         &           320.199637_SHR_KIND_R8, 279.376984_SHR_KIND_R8,  87.195000_SHR_KIND_R8,  &
-         &           349.129677_SHR_KIND_R8, 128.443387_SHR_KIND_R8, 154.143880_SHR_KIND_R8,  &
-         &           291.269597_SHR_KIND_R8, 114.860583_SHR_KIND_R8, 332.092251_SHR_KIND_R8,  &
-         &           296.414411_SHR_KIND_R8, 145.769910_SHR_KIND_R8, 337.237063_SHR_KIND_R8,  &
-         &           152.092288_SHR_KIND_R8, 126.839891_SHR_KIND_R8, 210.667199_SHR_KIND_R8,  &
-         &            72.108838_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: ecphas(pecclen) = & ! phases for eccen/fvelp cos/sin series
+         &      (/    28.620089_SHR_KIND_R4, 193.788772_SHR_KIND_R4, 308.307024_SHR_KIND_R4,  &
+         &           320.199637_SHR_KIND_R4, 279.376984_SHR_KIND_R4,  87.195000_SHR_KIND_R4,  &
+         &           349.129677_SHR_KIND_R4, 128.443387_SHR_KIND_R4, 154.143880_SHR_KIND_R4,  &
+         &           291.269597_SHR_KIND_R4, 114.860583_SHR_KIND_R4, 332.092251_SHR_KIND_R4,  &
+         &           296.414411_SHR_KIND_R4, 145.769910_SHR_KIND_R4, 337.237063_SHR_KIND_R4,  &
+         &           152.092288_SHR_KIND_R4, 126.839891_SHR_KIND_R4, 210.667199_SHR_KIND_R4,  &
+         &            72.108838_SHR_KIND_R4/)
 
     ! Sine series data for computation of moving vernal equinox longitude of
     ! perihelion: amplitude (arc seconds), rate (arc sec/year), phase (degrees).
 
-    real   (SHR_KIND_R8), parameter :: mvamp (pmvelen) = & ! amplitudes for mvelp sine series
-         &      (/   7391.0225890_SHR_KIND_R8, 2555.1526947_SHR_KIND_R8, 2022.7629188_SHR_KIND_R8,  &
-         &          -1973.6517951_SHR_KIND_R8, 1240.2321818_SHR_KIND_R8,  953.8679112_SHR_KIND_R8,  &
-         &           -931.7537108_SHR_KIND_R8,  872.3795383_SHR_KIND_R8,  606.3544732_SHR_KIND_R8,  &
-         &           -496.0274038_SHR_KIND_R8,  456.9608039_SHR_KIND_R8,  346.9462320_SHR_KIND_R8,  &
-         &           -305.8412902_SHR_KIND_R8,  249.6173246_SHR_KIND_R8, -199.1027200_SHR_KIND_R8,  &
-         &            191.0560889_SHR_KIND_R8, -175.2936572_SHR_KIND_R8,  165.9068833_SHR_KIND_R8,  &
-         &            161.1285917_SHR_KIND_R8,  139.7878093_SHR_KIND_R8, -133.5228399_SHR_KIND_R8,  &
-         &            117.0673811_SHR_KIND_R8,  104.6907281_SHR_KIND_R8,   95.3227476_SHR_KIND_R8,  &
-         &             86.7824524_SHR_KIND_R8,   86.0857729_SHR_KIND_R8,   70.5893698_SHR_KIND_R8,  &
-         &            -69.9719343_SHR_KIND_R8,  -62.5817473_SHR_KIND_R8,   61.5450059_SHR_KIND_R8,  &
-         &            -57.9364011_SHR_KIND_R8,   57.1899832_SHR_KIND_R8,  -57.0236109_SHR_KIND_R8,  &
-         &            -54.2119253_SHR_KIND_R8,   53.2834147_SHR_KIND_R8,   52.1223575_SHR_KIND_R8,  &
-         &            -49.0059908_SHR_KIND_R8,  -48.3118757_SHR_KIND_R8,  -45.4191685_SHR_KIND_R8,  &
-         &            -42.2357920_SHR_KIND_R8,  -34.7971099_SHR_KIND_R8,   34.4623613_SHR_KIND_R8,  &
-         &            -33.8356643_SHR_KIND_R8,   33.6689362_SHR_KIND_R8,  -31.2521586_SHR_KIND_R8,  &
-         &            -30.8798701_SHR_KIND_R8,   28.4640769_SHR_KIND_R8,  -27.1960802_SHR_KIND_R8,  &
-         &             27.0860736_SHR_KIND_R8,  -26.3437456_SHR_KIND_R8,   24.7253740_SHR_KIND_R8,  &
-         &             24.6732126_SHR_KIND_R8,   24.4272733_SHR_KIND_R8,   24.0127327_SHR_KIND_R8,  &
-         &             21.7150294_SHR_KIND_R8,  -21.5375347_SHR_KIND_R8,   18.1148363_SHR_KIND_R8,  &
-         &            -16.9603104_SHR_KIND_R8,  -16.1765215_SHR_KIND_R8,   15.5567653_SHR_KIND_R8,  &
-         &             15.4846529_SHR_KIND_R8,   15.2150632_SHR_KIND_R8,   14.5047426_SHR_KIND_R8,  &
-         &            -14.3873316_SHR_KIND_R8,   13.1351419_SHR_KIND_R8,   12.8776311_SHR_KIND_R8,  &
-         &             11.9867234_SHR_KIND_R8,   11.9385578_SHR_KIND_R8,   11.7030822_SHR_KIND_R8,  &
-         &             11.6018181_SHR_KIND_R8,  -11.2617293_SHR_KIND_R8,  -10.4664199_SHR_KIND_R8,  &
-         &             10.4333970_SHR_KIND_R8,  -10.2377466_SHR_KIND_R8,   10.1934446_SHR_KIND_R8,  &
-         &            -10.1280191_SHR_KIND_R8,   10.0289441_SHR_KIND_R8,  -10.0034259_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: mvamp (pmvelen) = & ! amplitudes for mvelp sine series
+         &      (/   7391.0225890_SHR_KIND_R4, 2555.1526947_SHR_KIND_R4, 2022.7629188_SHR_KIND_R4,  &
+         &          -1973.6517951_SHR_KIND_R4, 1240.2321818_SHR_KIND_R4,  953.8679112_SHR_KIND_R4,  &
+         &           -931.7537108_SHR_KIND_R4,  872.3795383_SHR_KIND_R4,  606.3544732_SHR_KIND_R4,  &
+         &           -496.0274038_SHR_KIND_R4,  456.9608039_SHR_KIND_R4,  346.9462320_SHR_KIND_R4,  &
+         &           -305.8412902_SHR_KIND_R4,  249.6173246_SHR_KIND_R4, -199.1027200_SHR_KIND_R4,  &
+         &            191.0560889_SHR_KIND_R4, -175.2936572_SHR_KIND_R4,  165.9068833_SHR_KIND_R4,  &
+         &            161.1285917_SHR_KIND_R4,  139.7878093_SHR_KIND_R4, -133.5228399_SHR_KIND_R4,  &
+         &            117.0673811_SHR_KIND_R4,  104.6907281_SHR_KIND_R4,   95.3227476_SHR_KIND_R4,  &
+         &             86.7824524_SHR_KIND_R4,   86.0857729_SHR_KIND_R4,   70.5893698_SHR_KIND_R4,  &
+         &            -69.9719343_SHR_KIND_R4,  -62.5817473_SHR_KIND_R4,   61.5450059_SHR_KIND_R4,  &
+         &            -57.9364011_SHR_KIND_R4,   57.1899832_SHR_KIND_R4,  -57.0236109_SHR_KIND_R4,  &
+         &            -54.2119253_SHR_KIND_R4,   53.2834147_SHR_KIND_R4,   52.1223575_SHR_KIND_R4,  &
+         &            -49.0059908_SHR_KIND_R4,  -48.3118757_SHR_KIND_R4,  -45.4191685_SHR_KIND_R4,  &
+         &            -42.2357920_SHR_KIND_R4,  -34.7971099_SHR_KIND_R4,   34.4623613_SHR_KIND_R4,  &
+         &            -33.8356643_SHR_KIND_R4,   33.6689362_SHR_KIND_R4,  -31.2521586_SHR_KIND_R4,  &
+         &            -30.8798701_SHR_KIND_R4,   28.4640769_SHR_KIND_R4,  -27.1960802_SHR_KIND_R4,  &
+         &             27.0860736_SHR_KIND_R4,  -26.3437456_SHR_KIND_R4,   24.7253740_SHR_KIND_R4,  &
+         &             24.6732126_SHR_KIND_R4,   24.4272733_SHR_KIND_R4,   24.0127327_SHR_KIND_R4,  &
+         &             21.7150294_SHR_KIND_R4,  -21.5375347_SHR_KIND_R4,   18.1148363_SHR_KIND_R4,  &
+         &            -16.9603104_SHR_KIND_R4,  -16.1765215_SHR_KIND_R4,   15.5567653_SHR_KIND_R4,  &
+         &             15.4846529_SHR_KIND_R4,   15.2150632_SHR_KIND_R4,   14.5047426_SHR_KIND_R4,  &
+         &            -14.3873316_SHR_KIND_R4,   13.1351419_SHR_KIND_R4,   12.8776311_SHR_KIND_R4,  &
+         &             11.9867234_SHR_KIND_R4,   11.9385578_SHR_KIND_R4,   11.7030822_SHR_KIND_R4,  &
+         &             11.6018181_SHR_KIND_R4,  -11.2617293_SHR_KIND_R4,  -10.4664199_SHR_KIND_R4,  &
+         &             10.4333970_SHR_KIND_R4,  -10.2377466_SHR_KIND_R4,   10.1934446_SHR_KIND_R4,  &
+         &            -10.1280191_SHR_KIND_R4,   10.0289441_SHR_KIND_R4,  -10.0034259_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: mvrate(pmvelen) = & ! rates for mvelp sine series
-         &      (/    31.609974_SHR_KIND_R8, 32.620504_SHR_KIND_R8, 24.172203_SHR_KIND_R8,   &
-         &             0.636717_SHR_KIND_R8, 31.983787_SHR_KIND_R8,  3.138886_SHR_KIND_R8,   &
-         &            30.973257_SHR_KIND_R8, 44.828336_SHR_KIND_R8,  0.991874_SHR_KIND_R8,   &
-         &             0.373813_SHR_KIND_R8, 43.668246_SHR_KIND_R8, 32.246691_SHR_KIND_R8,   &
-         &            30.599444_SHR_KIND_R8,  2.147012_SHR_KIND_R8, 10.511172_SHR_KIND_R8,   &
-         &            42.681324_SHR_KIND_R8, 13.650058_SHR_KIND_R8,  0.986922_SHR_KIND_R8,   &
-         &             9.874455_SHR_KIND_R8, 13.013341_SHR_KIND_R8,  0.262904_SHR_KIND_R8,   &
-         &             0.004952_SHR_KIND_R8,  1.142024_SHR_KIND_R8, 63.219948_SHR_KIND_R8,   &
-         &             0.205021_SHR_KIND_R8,  2.151964_SHR_KIND_R8, 64.230478_SHR_KIND_R8,   &
-         &            43.836462_SHR_KIND_R8, 47.439436_SHR_KIND_R8,  1.384343_SHR_KIND_R8,   &
-         &             7.437771_SHR_KIND_R8, 18.829299_SHR_KIND_R8,  9.500642_SHR_KIND_R8,   &
-         &             0.431696_SHR_KIND_R8,  1.160090_SHR_KIND_R8, 55.782177_SHR_KIND_R8,   &
-         &            12.639528_SHR_KIND_R8,  1.155138_SHR_KIND_R8,  0.168216_SHR_KIND_R8,   &
-         &             1.647247_SHR_KIND_R8, 10.884985_SHR_KIND_R8,  5.610937_SHR_KIND_R8,   &
-         &            12.658184_SHR_KIND_R8,  1.010530_SHR_KIND_R8,  1.983748_SHR_KIND_R8,   &
-         &            14.023871_SHR_KIND_R8,  0.560178_SHR_KIND_R8,  1.273434_SHR_KIND_R8,   &
-         &            12.021467_SHR_KIND_R8, 62.583231_SHR_KIND_R8, 63.593761_SHR_KIND_R8,   &
-         &            76.438310_SHR_KIND_R8,  4.280910_SHR_KIND_R8, 13.218362_SHR_KIND_R8,   &
-         &            17.818769_SHR_KIND_R8,  8.359495_SHR_KIND_R8, 56.792707_SHR_KIND_R8,   &
-         &            8.448301_SHR_KIND_R8,  1.978796_SHR_KIND_R8,  8.863925_SHR_KIND_R8,   &
-         &             0.186365_SHR_KIND_R8,  8.996212_SHR_KIND_R8,  6.771027_SHR_KIND_R8,   &
-         &            45.815258_SHR_KIND_R8, 12.002811_SHR_KIND_R8, 75.278220_SHR_KIND_R8,   &
-         &            65.241008_SHR_KIND_R8, 18.870667_SHR_KIND_R8, 22.009553_SHR_KIND_R8,   &
-         &            64.604291_SHR_KIND_R8, 11.498094_SHR_KIND_R8,  0.578834_SHR_KIND_R8,   &
-         &             9.237738_SHR_KIND_R8, 49.747842_SHR_KIND_R8,  2.147012_SHR_KIND_R8,   &
-         &             1.196895_SHR_KIND_R8,  2.133898_SHR_KIND_R8,  0.173168_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: mvrate(pmvelen) = & ! rates for mvelp sine series
+         &      (/    31.609974_SHR_KIND_R4, 32.620504_SHR_KIND_R4, 24.172203_SHR_KIND_R4,   &
+         &             0.636717_SHR_KIND_R4, 31.983787_SHR_KIND_R4,  3.138886_SHR_KIND_R4,   &
+         &            30.973257_SHR_KIND_R4, 44.828336_SHR_KIND_R4,  0.991874_SHR_KIND_R4,   &
+         &             0.373813_SHR_KIND_R4, 43.668246_SHR_KIND_R4, 32.246691_SHR_KIND_R4,   &
+         &            30.599444_SHR_KIND_R4,  2.147012_SHR_KIND_R4, 10.511172_SHR_KIND_R4,   &
+         &            42.681324_SHR_KIND_R4, 13.650058_SHR_KIND_R4,  0.986922_SHR_KIND_R4,   &
+         &             9.874455_SHR_KIND_R4, 13.013341_SHR_KIND_R4,  0.262904_SHR_KIND_R4,   &
+         &             0.004952_SHR_KIND_R4,  1.142024_SHR_KIND_R4, 63.219948_SHR_KIND_R4,   &
+         &             0.205021_SHR_KIND_R4,  2.151964_SHR_KIND_R4, 64.230478_SHR_KIND_R4,   &
+         &            43.836462_SHR_KIND_R4, 47.439436_SHR_KIND_R4,  1.384343_SHR_KIND_R4,   &
+         &             7.437771_SHR_KIND_R4, 18.829299_SHR_KIND_R4,  9.500642_SHR_KIND_R4,   &
+         &             0.431696_SHR_KIND_R4,  1.160090_SHR_KIND_R4, 55.782177_SHR_KIND_R4,   &
+         &            12.639528_SHR_KIND_R4,  1.155138_SHR_KIND_R4,  0.168216_SHR_KIND_R4,   &
+         &             1.647247_SHR_KIND_R4, 10.884985_SHR_KIND_R4,  5.610937_SHR_KIND_R4,   &
+         &            12.658184_SHR_KIND_R4,  1.010530_SHR_KIND_R4,  1.983748_SHR_KIND_R4,   &
+         &            14.023871_SHR_KIND_R4,  0.560178_SHR_KIND_R4,  1.273434_SHR_KIND_R4,   &
+         &            12.021467_SHR_KIND_R4, 62.583231_SHR_KIND_R4, 63.593761_SHR_KIND_R4,   &
+         &            76.438310_SHR_KIND_R4,  4.280910_SHR_KIND_R4, 13.218362_SHR_KIND_R4,   &
+         &            17.818769_SHR_KIND_R4,  8.359495_SHR_KIND_R4, 56.792707_SHR_KIND_R4,   &
+         &            8.448301_SHR_KIND_R4,  1.978796_SHR_KIND_R4,  8.863925_SHR_KIND_R4,   &
+         &             0.186365_SHR_KIND_R4,  8.996212_SHR_KIND_R4,  6.771027_SHR_KIND_R4,   &
+         &            45.815258_SHR_KIND_R4, 12.002811_SHR_KIND_R4, 75.278220_SHR_KIND_R4,   &
+         &            65.241008_SHR_KIND_R4, 18.870667_SHR_KIND_R4, 22.009553_SHR_KIND_R4,   &
+         &            64.604291_SHR_KIND_R4, 11.498094_SHR_KIND_R4,  0.578834_SHR_KIND_R4,   &
+         &             9.237738_SHR_KIND_R4, 49.747842_SHR_KIND_R4,  2.147012_SHR_KIND_R4,   &
+         &             1.196895_SHR_KIND_R4,  2.133898_SHR_KIND_R4,  0.173168_SHR_KIND_R4/)
 
-    real   (SHR_KIND_R8), parameter :: mvphas(pmvelen) = & ! phases for mvelp sine series
-         &      (/    251.9025_SHR_KIND_R8, 280.8325_SHR_KIND_R8, 128.3057_SHR_KIND_R8,   &
-         &            348.1074_SHR_KIND_R8, 292.7252_SHR_KIND_R8, 165.1686_SHR_KIND_R8,   &
-         &            263.7951_SHR_KIND_R8,  15.3747_SHR_KIND_R8,  58.5749_SHR_KIND_R8,   &
-         &             40.8226_SHR_KIND_R8, 308.4258_SHR_KIND_R8, 240.0099_SHR_KIND_R8,   &
-         &            222.9725_SHR_KIND_R8, 106.5937_SHR_KIND_R8, 114.5182_SHR_KIND_R8,   &
-         &            268.7809_SHR_KIND_R8, 279.6869_SHR_KIND_R8,  39.6448_SHR_KIND_R8,   &
-         &            126.4108_SHR_KIND_R8, 291.5795_SHR_KIND_R8, 307.2848_SHR_KIND_R8,   &
-         &             18.9300_SHR_KIND_R8, 273.7596_SHR_KIND_R8, 143.8050_SHR_KIND_R8,   &
-         &            191.8927_SHR_KIND_R8, 125.5237_SHR_KIND_R8, 172.7351_SHR_KIND_R8,   &
-         &            316.7998_SHR_KIND_R8, 319.6024_SHR_KIND_R8,  69.7526_SHR_KIND_R8,   &
-         &            123.5968_SHR_KIND_R8, 217.6432_SHR_KIND_R8,  85.5882_SHR_KIND_R8,   &
-         &            156.2147_SHR_KIND_R8,  66.9489_SHR_KIND_R8,  20.2082_SHR_KIND_R8,   &
-         &            250.7568_SHR_KIND_R8,  48.0188_SHR_KIND_R8,   8.3739_SHR_KIND_R8,   &
-         &             17.0374_SHR_KIND_R8, 155.3409_SHR_KIND_R8,  94.1709_SHR_KIND_R8,   &
-         &            221.1120_SHR_KIND_R8,  28.9300_SHR_KIND_R8, 117.1498_SHR_KIND_R8,   &
-         &            320.5095_SHR_KIND_R8, 262.3602_SHR_KIND_R8, 336.2148_SHR_KIND_R8,   &
-         &            233.0046_SHR_KIND_R8, 155.6977_SHR_KIND_R8, 184.6277_SHR_KIND_R8,   &
-         &            267.2772_SHR_KIND_R8,  78.9281_SHR_KIND_R8, 123.4722_SHR_KIND_R8,   &
-         &            188.7132_SHR_KIND_R8, 180.1364_SHR_KIND_R8,  49.1382_SHR_KIND_R8,   &
-         &            152.5268_SHR_KIND_R8,  98.2198_SHR_KIND_R8,  97.4808_SHR_KIND_R8,   &
-         &            221.5376_SHR_KIND_R8, 168.2438_SHR_KIND_R8, 161.1199_SHR_KIND_R8,   &
-         &             55.0196_SHR_KIND_R8, 262.6495_SHR_KIND_R8, 200.3284_SHR_KIND_R8,   &
-         &            201.6651_SHR_KIND_R8, 294.6547_SHR_KIND_R8,  99.8233_SHR_KIND_R8,   &
-         &            213.5577_SHR_KIND_R8, 154.1631_SHR_KIND_R8, 232.7153_SHR_KIND_R8,   &
-         &            138.3034_SHR_KIND_R8, 204.6609_SHR_KIND_R8, 106.5938_SHR_KIND_R8,   &
-         &            250.4676_SHR_KIND_R8, 332.3345_SHR_KIND_R8,  27.3039_SHR_KIND_R8/)
+    real   (SHR_KIND_R4), parameter :: mvphas(pmvelen) = & ! phases for mvelp sine series
+         &      (/    251.9025_SHR_KIND_R4, 280.8325_SHR_KIND_R4, 128.3057_SHR_KIND_R4,   &
+         &            348.1074_SHR_KIND_R4, 292.7252_SHR_KIND_R4, 165.1686_SHR_KIND_R4,   &
+         &            263.7951_SHR_KIND_R4,  15.3747_SHR_KIND_R4,  58.5749_SHR_KIND_R4,   &
+         &             40.8226_SHR_KIND_R4, 308.4258_SHR_KIND_R4, 240.0099_SHR_KIND_R4,   &
+         &            222.9725_SHR_KIND_R4, 106.5937_SHR_KIND_R4, 114.5182_SHR_KIND_R4,   &
+         &            268.7809_SHR_KIND_R4, 279.6869_SHR_KIND_R4,  39.6448_SHR_KIND_R4,   &
+         &            126.4108_SHR_KIND_R4, 291.5795_SHR_KIND_R4, 307.2848_SHR_KIND_R4,   &
+         &             18.9300_SHR_KIND_R4, 273.7596_SHR_KIND_R4, 143.8050_SHR_KIND_R4,   &
+         &            191.8927_SHR_KIND_R4, 125.5237_SHR_KIND_R4, 172.7351_SHR_KIND_R4,   &
+         &            316.7998_SHR_KIND_R4, 319.6024_SHR_KIND_R4,  69.7526_SHR_KIND_R4,   &
+         &            123.5968_SHR_KIND_R4, 217.6432_SHR_KIND_R4,  85.5882_SHR_KIND_R4,   &
+         &            156.2147_SHR_KIND_R4,  66.9489_SHR_KIND_R4,  20.2082_SHR_KIND_R4,   &
+         &            250.7568_SHR_KIND_R4,  48.0188_SHR_KIND_R4,   8.3739_SHR_KIND_R4,   &
+         &             17.0374_SHR_KIND_R4, 155.3409_SHR_KIND_R4,  94.1709_SHR_KIND_R4,   &
+         &            221.1120_SHR_KIND_R4,  28.9300_SHR_KIND_R4, 117.1498_SHR_KIND_R4,   &
+         &            320.5095_SHR_KIND_R4, 262.3602_SHR_KIND_R4, 336.2148_SHR_KIND_R4,   &
+         &            233.0046_SHR_KIND_R4, 155.6977_SHR_KIND_R4, 184.6277_SHR_KIND_R4,   &
+         &            267.2772_SHR_KIND_R4,  78.9281_SHR_KIND_R4, 123.4722_SHR_KIND_R4,   &
+         &            188.7132_SHR_KIND_R4, 180.1364_SHR_KIND_R4,  49.1382_SHR_KIND_R4,   &
+         &            152.5268_SHR_KIND_R4,  98.2198_SHR_KIND_R4,  97.4808_SHR_KIND_R4,   &
+         &            221.5376_SHR_KIND_R4, 168.2438_SHR_KIND_R4, 161.1199_SHR_KIND_R4,   &
+         &             55.0196_SHR_KIND_R4, 262.6495_SHR_KIND_R4, 200.3284_SHR_KIND_R4,   &
+         &            201.6651_SHR_KIND_R4, 294.6547_SHR_KIND_R4,  99.8233_SHR_KIND_R4,   &
+         &            213.5577_SHR_KIND_R4, 154.1631_SHR_KIND_R4, 232.7153_SHR_KIND_R4,   &
+         &            138.3034_SHR_KIND_R4, 204.6609_SHR_KIND_R4, 106.5938_SHR_KIND_R4,   &
+         &            250.4676_SHR_KIND_R4, 332.3345_SHR_KIND_R4,  27.3039_SHR_KIND_R4/)
 
     !---------------------------Local variables----------------------------------
     integer(SHR_KIND_IN) :: i       ! Index for series summations
-    real   (SHR_KIND_R8) :: obsum   ! Obliquity series summation
-    real   (SHR_KIND_R8) :: cossum  ! Cos series summation for eccentricity/fvelp
-    real   (SHR_KIND_R8) :: sinsum  ! Sin series summation for eccentricity/fvelp
-    real   (SHR_KIND_R8) :: fvelp   ! Fixed vernal equinox long of perihelion
-    real   (SHR_KIND_R8) :: mvsum   ! mvelp series summation
-    real   (SHR_KIND_R8) :: beta    ! Intermediate argument for lambm0
-    real   (SHR_KIND_R8) :: years   ! Years to time of interest ( pos <=> future)
-    real   (SHR_KIND_R8) :: eccen2  ! eccentricity squared
-    real   (SHR_KIND_R8) :: eccen3  ! eccentricity cubed
+    real   (SHR_KIND_R4) :: obsum   ! Obliquity series summation
+    real   (SHR_KIND_R4) :: cossum  ! Cos series summation for eccentricity/fvelp
+    real   (SHR_KIND_R4) :: sinsum  ! Sin series summation for eccentricity/fvelp
+    real   (SHR_KIND_R4) :: fvelp   ! Fixed vernal equinox long of perihelion
+    real   (SHR_KIND_R4) :: mvsum   ! mvelp series summation
+    real   (SHR_KIND_R4) :: beta    ! Intermediate argument for lambm0
+    real   (SHR_KIND_R4) :: years   ! Years to time of interest ( pos <=> future)
+    real   (SHR_KIND_R4) :: eccen2  ! eccentricity squared
+    real   (SHR_KIND_R4) :: eccen3  ! eccentricity cubed
 
     !-------------------------- Formats -----------------------------------------
     character(len=*),parameter :: F00 = "('(shr_orb_params) ',4a)"
@@ -571,8 +867,8 @@ CONTAINS
        if ( log_print .and. s_loglev > 0) then
           write(s_logunit,F01) 'Calculate orbit for year: ' , iyear_AD
        end if
-       yb4_1950AD = 1950.0_SHR_KIND_R8 - real(iyear_AD,SHR_KIND_R8)
-       if ( abs(yb4_1950AD) .gt. 1000000.0_SHR_KIND_R8 )then
+       yb4_1950AD = 1950.0_SHR_KIND_R4 - real(iyear_AD,SHR_KIND_R4)
+       if ( abs(yb4_1950AD) .gt. 1000000.0_SHR_KIND_R4 )then
           write(s_logunit,F00) 'orbit only valid for years+-1000000'
           write(s_logunit,F00) 'Relative to 1950 AD'
           write(s_logunit,F03) '# of years before 1950: ',yb4_1950AD
@@ -614,12 +910,12 @@ CONTAINS
        ! factor).  For obliq, first term is Berger 1978 epsilon star; second
        ! term is series summation in degrees.
 
-       obsum = 0.0_SHR_KIND_R8
+       obsum = 0.0_SHR_KIND_R4
        do i = 1, poblen
           obsum = obsum + obamp(i)*psecdeg*cos((obrate(i)*psecdeg*years + &
                &       obphas(i))*degrad)
        end do
-       obliq = 23.320556_SHR_KIND_R8 + obsum
+       obliq = 23.320556_SHR_KIND_R4 + obsum
 
        ! Summation of cosine and sine series for computation of eccentricity
        ! (eccen; e in Berger 1978) and fixed vernal equinox longitude of
@@ -627,12 +923,12 @@ CONTAINS
        ! of moving vernal equinox longitude of perihelion.  Convert the rates,
        ! which are in arc seconds, into degrees via multiplication by psecdeg.
 
-       cossum = 0.0_SHR_KIND_R8
+       cossum = 0.0_SHR_KIND_R4
        do i = 1, pecclen
           cossum = cossum+ecamp(i)*cos((ecrate(i)*psecdeg*years+ecphas(i))*degrad)
        end do
 
-       sinsum = 0.0_SHR_KIND_R8
+       sinsum = 0.0_SHR_KIND_R4
        do i = 1, pecclen
           sinsum = sinsum+ecamp(i)*sin((ecrate(i)*psecdeg*years+ecphas(i))*degrad)
        end do
@@ -644,19 +940,19 @@ CONTAINS
        eccen3 = eccen2*eccen
 
        ! A series of cases for fvelp, which is in radians.
-       if (abs(cossum) .le. 1.0E-8_SHR_KIND_R8) then
-          if (sinsum .eq. 0.0_SHR_KIND_R8) then
-             fvelp = 0.0_SHR_KIND_R8
-          else if (sinsum .lt. 0.0_SHR_KIND_R8) then
-             fvelp = 1.5_SHR_KIND_R8*pi
-          else if (sinsum .gt. 0.0_SHR_KIND_R8) then
-             fvelp = .5_SHR_KIND_R8*pi
+       if (abs(cossum) .le. 1.0E-8_SHR_KIND_R4) then
+          if (sinsum .eq. 0.0_SHR_KIND_R4) then
+             fvelp = 0.0_SHR_KIND_R4
+          else if (sinsum .lt. 0.0_SHR_KIND_R4) then
+             fvelp = 1.5_SHR_KIND_R4*pi
+          else if (sinsum .gt. 0.0_SHR_KIND_R4) then
+             fvelp = .5_SHR_KIND_R4*pi
           endif
-       else if (cossum .lt. 0.0_SHR_KIND_R8) then
+       else if (cossum .lt. 0.0_SHR_KIND_R4) then
           fvelp = atan(sinsum/cossum) + pi
        else ! cossum > 1.0e-8
-          if (sinsum .lt. 0.0_SHR_KIND_R8) then
-             fvelp = atan(sinsum/cossum) + 2.0_SHR_KIND_R8*pi
+          if (sinsum .lt. 0.0_SHR_KIND_R4) then
+             fvelp = atan(sinsum/cossum) + 2.0_SHR_KIND_R4*pi
           else
              fvelp = atan(sinsum/cossum)
           endif
@@ -671,20 +967,20 @@ CONTAINS
        ! Series summation plus second and third terms constitute Berger 1978
        ! psi, which is the general precession.
 
-       mvsum = 0.0_SHR_KIND_R8
+       mvsum = 0.0_SHR_KIND_R4
        do i = 1, pmvelen
           mvsum = mvsum + mvamp(i)*psecdeg*sin((mvrate(i)*psecdeg*years + &
                &       mvphas(i))*degrad)
        end do
-       mvelp = fvelp/degrad + 50.439273_SHR_KIND_R8*psecdeg*years + 3.392506_SHR_KIND_R8 + mvsum
+       mvelp = fvelp/degrad + 50.439273_SHR_KIND_R4*psecdeg*years + 3.392506_SHR_KIND_R4 + mvsum
 
        ! Cases to make sure mvelp is between 0 and 360.
 
-       do while (mvelp .lt. 0.0_SHR_KIND_R8)
-          mvelp = mvelp + 360.0_SHR_KIND_R8
+       do while (mvelp .lt. 0.0_SHR_KIND_R4)
+          mvelp = mvelp + 360.0_SHR_KIND_R4
        end do
-       do while (mvelp .ge. 360.0_SHR_KIND_R8)
-          mvelp = mvelp - 360.0_SHR_KIND_R8
+       do while (mvelp .ge. 360.0_SHR_KIND_R4)
+          mvelp = mvelp - 360.0_SHR_KIND_R4
        end do
 
     END IF  ! end of test on whether to calculate or use input orbital params
@@ -703,20 +999,20 @@ CONTAINS
     ! Additionally, orbit will need this value in radians. So mvelp becomes
     ! mvelpp (mvelp plus pi)
 
-    mvelpp = (mvelp + 180._SHR_KIND_R8)*degrad
+    mvelpp = (mvelp + 180._SHR_KIND_R4)*degrad
 
     ! Set up an argument used several times in lambm0 calculation ahead.
 
-    beta = sqrt(1._SHR_KIND_R8 - eccen2)
+    beta = sqrt(1._SHR_KIND_R4 - eccen2)
 
     ! The mean longitude at the vernal equinox (lambda m nought in Berger
     ! 1978; in radians) is calculated from the following formula given in
     ! Berger 1978.  At the vernal equinox the true longitude (lambda in Berger
     ! 1978) is 0.
 
-    lambm0 = 2._SHR_KIND_R8*((.5_SHR_KIND_R8*eccen + .125_SHR_KIND_R8*eccen3)*(1._SHR_KIND_R8 + beta)*sin(mvelpp)  &
-         &      - .250_SHR_KIND_R8*eccen2*(.5_SHR_KIND_R8    + beta)*sin(2._SHR_KIND_R8*mvelpp)            &
-         &      + .125_SHR_KIND_R8*eccen3*(1._SHR_KIND_R8/3._SHR_KIND_R8 + beta)*sin(3._SHR_KIND_R8*mvelpp))
+    lambm0 = 2._SHR_KIND_R4*((.5_SHR_KIND_R4*eccen + .125_SHR_KIND_R4*eccen3)*(1._SHR_KIND_R4 + beta)*sin(mvelpp)  &
+         &      - .250_SHR_KIND_R4*eccen2*(.5_SHR_KIND_R4    + beta)*sin(2._SHR_KIND_R4*mvelpp)            &
+         &      + .125_SHR_KIND_R4*eccen3*(1._SHR_KIND_R4/3._SHR_KIND_R4 + beta)*sin(3._SHR_KIND_R4*mvelpp))
 
     if ( log_print ) then
        write(s_logunit,F03) '------ Computed Orbital Parameters ------'
@@ -729,11 +1025,11 @@ CONTAINS
        write(s_logunit,F03) '-----------------------------------------'
     end if
 
-  END SUBROUTINE shr_orb_params
+  END SUBROUTINE shr_orb_params_r4
 
   !===============================================================================
 
-  SUBROUTINE shr_orb_decl(calday ,eccen ,mvelpp ,lambm0 ,obliqr ,delta ,eccf)
+  SUBROUTINE shr_orb_decl_R8(calday ,eccen ,mvelpp ,lambm0 ,obliqr ,delta ,eccf)
 
     !-------------------------------------------------------------------------------
     !
@@ -811,7 +1107,86 @@ CONTAINS
 
     return
 
-  END SUBROUTINE shr_orb_decl
+  END SUBROUTINE shr_orb_decl_R8
+SUBROUTINE shr_orb_decl_R4(calday ,eccen ,mvelpp ,lambm0 ,obliqr ,delta ,eccf)
+
+    !-------------------------------------------------------------------------------
+    !
+    ! Compute earth/orbit parameters using formula suggested by
+    ! Duane Thresher.
+    !
+    !---------------------------Code history----------------------------------------
+    !
+    ! Original version:  Erik Kluzek
+    ! Date:              Oct/1997
+    !
+    !-------------------------------------------------------------------------------
+
+    !------------------------------Arguments--------------------------------
+    real   (SHR_KIND_R4),intent(in)  :: calday ! Calendar day, including fraction
+    real   (SHR_KIND_R4),intent(in)  :: eccen  ! Eccentricity
+    real   (SHR_KIND_R4),intent(in)  :: obliqr ! Earths obliquity in radians
+    real   (SHR_KIND_R4),intent(in)  :: lambm0 ! Mean long of perihelion at the
+    ! vernal equinox (radians)
+    real   (SHR_KIND_R4),intent(in)  :: mvelpp ! moving vernal equinox longitude
+    ! of perihelion plus pi (radians)
+    real   (SHR_KIND_R4),intent(out) :: delta  ! Solar declination angle in rad
+    real   (SHR_KIND_R4),intent(out) :: eccf   ! Earth-sun distance factor (ie. (1/r)**2)
+
+    !---------------------------Local variables-----------------------------
+    real   (SHR_KIND_R4),parameter :: dayspy = 365.0_SHR_KIND_R4  ! days per year
+    real   (SHR_KIND_R4),parameter :: ve     = 80.5_SHR_KIND_R4   ! Calday of vernal equinox
+    ! assumes Jan 1 = calday 1
+
+    real   (SHR_KIND_R4) ::   lambm  ! Lambda m, mean long of perihelion (rad)
+    real   (SHR_KIND_R4) ::   lmm    ! Intermediate argument involving lambm
+    real   (SHR_KIND_R4) ::   lamb   ! Lambda, the earths long of perihelion
+    real   (SHR_KIND_R4) ::   invrho ! Inverse normalized sun/earth distance
+    real   (SHR_KIND_R4) ::   sinl   ! Sine of lmm
+
+    ! Compute eccentricity factor and solar declination using
+    ! day value where a round day (such as 213.0) refers to 0z at
+    ! Greenwich longitude.
+    !
+    ! Use formulas from Berger, Andre 1978: Long-Term Variations of Daily
+    ! Insolation and Quaternary Climatic Changes. J. of the Atmo. Sci.
+    ! 35:2362-2367.
+    !
+    ! To get the earths true longitude (position in orbit; lambda in Berger
+    ! 1978) which is necessary to find the eccentricity factor and declination,
+    ! must first calculate the mean longitude (lambda m in Berger 1978) at
+    ! the present day.  This is done by adding to lambm0 (the mean longitude
+    ! at the vernal equinox, set as March 21 at noon, when lambda=0; in radians)
+    ! an increment (delta lambda m in Berger 1978) that is the number of
+    ! days past or before (a negative increment) the vernal equinox divided by
+    ! the days in a model year times the 2*pi radians in a complete orbit.
+
+    lambm = lambm0 + (calday - ve)*2._SHR_KIND_R4*pi/dayspy
+    lmm   = lambm  - mvelpp
+
+    ! The earths true longitude, in radians, is then found from
+    ! the formula in Berger 1978:
+
+    sinl  = sin(lmm)
+    lamb  = lambm  + eccen*(2._SHR_KIND_R4*sinl + eccen*(1.25_SHR_KIND_R4*sin(2._SHR_KIND_R4*lmm)  &
+         &     + eccen*((13.0_SHR_KIND_R4/12.0_SHR_KIND_R4)*sin(3._SHR_KIND_R4*lmm) - 0.25_SHR_KIND_R4*sinl)))
+
+    ! Using the obliquity, eccentricity, moving vernal equinox longitude of
+    ! perihelion (plus), and earths true longitude, the declination (delta)
+    ! and the normalized earth/sun distance (rho in Berger 1978; actually inverse
+    ! rho will be used), and thus the eccentricity factor (eccf), can be
+    ! calculated from formulas given in Berger 1978.
+
+    invrho = (1._SHR_KIND_R4 + eccen*cos(lamb - mvelpp)) / (1._SHR_KIND_R4 - eccen*eccen)
+
+    ! Set solar declination and eccentricity factor
+
+    delta  = asin(sin(obliqr)*sin(lamb))
+    eccf   = invrho*invrho
+
+    return
+
+  END SUBROUTINE shr_orb_decl_r4
 
   !===============================================================================
 
